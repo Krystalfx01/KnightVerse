@@ -1,18 +1,20 @@
-use prometheus::{Counter, Histogram, Gauge, Registry, TextEncoder};
+use prometheus::{Counter, CounterVec, HistogramVec, Gauge, Opts, Registry, TextEncoder, Encoder};
 use actix_web::{HttpResponse, web};
 use std::sync::Arc;
+use chrono::{DateTime, Utc};
+use uuid::Uuid;
 
 /// Custom metrics collector for XLMate
 pub struct MetricsCollector {
     registry: Registry,
     
     // HTTP metrics
-    pub http_requests_total: Counter,
-    pub http_request_duration: Histogram,
+    pub http_requests_total: CounterVec,
+    pub http_request_duration: HistogramVec,
     
     // Game metrics
     pub games_created_total: Counter,
-    pub games_completed_total: Counter,
+    pub games_completed_total: CounterVec,
     pub active_games: Gauge,
     pub moves_made_total: Counter,
     
@@ -35,16 +37,20 @@ impl MetricsCollector {
         let registry = Registry::new();
         
         // HTTP metrics
-        let http_requests_total = Counter::new(
-            "http_requests_total",
-            "Total number of HTTP requests"
+        let http_requests_total = CounterVec::new(
+            Opts::new(
+                "http_requests_total",
+                "Total number of HTTP requests"
+            ),
+            &["method", "path", "status"]
         ).unwrap();
-        
-        let http_request_duration = Histogram::with_opts(
+
+        let http_request_duration = HistogramVec::new(
             prometheus::HistogramOpts::new(
                 "http_request_duration_seconds",
                 "HTTP request duration in seconds"
-            ).buckets(vec![0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0])
+            ).buckets(vec![0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]),
+            &["method", "path"]
         ).unwrap();
         
         // Game metrics
@@ -53,9 +59,12 @@ impl MetricsCollector {
             "Total number of games created"
         ).unwrap();
         
-        let games_completed_total = Counter::new(
-            "games_completed_total",
-            "Total number of games completed"
+        let games_completed_total = CounterVec::new(
+            Opts::new(
+                "games_completed_total",
+                "Total number of games completed"
+            ),
+            &["result"]
         ).unwrap();
         
         let active_games = Gauge::new(
@@ -158,12 +167,16 @@ pub trait MiddlewareMetrics {
 }
 
 impl MiddlewareMetrics for MetricsCollector {
-    fn inc_http_requests(&self, _method: &str, _path: &str, _status: u16) {
-        self.http_requests_total.inc();
+    fn inc_http_requests(&self, method: &str, path: &str, status: u16) {
+        self.http_requests_total
+            .with_label_values(&[method, path, &status.to_string()])
+            .inc();
     }
-
-    fn observe_http_duration(&self, _method: &str, _path: &str, duration: f64) {
-        self.http_request_duration.observe(duration);
+    
+    fn observe_http_duration(&self, method: &str, path: &str, duration: f64) {
+        self.http_request_duration
+            .with_label_values(&[method, path])
+            .observe(duration);
     }
 }
 
@@ -180,8 +193,10 @@ impl GameMetrics for MetricsCollector {
         self.games_created_total.inc();
     }
     
-    fn inc_games_completed(&self, _result: &str) {
-        self.games_completed_total.inc();
+    fn inc_games_completed(&self, result: &str) {
+        self.games_completed_total
+            .with_label_values(&[result])
+            .inc();
     }
     
     fn inc_moves_made(&self) {
@@ -268,7 +283,9 @@ mod tests {
         let collector = MetricsCollector::new();
         
         // Test that all metrics are initialized
-        collector.http_requests_total.inc();
+        collector.http_requests_total
+            .with_label_values(&["GET", "/", "200"])
+            .inc();
         collector.games_created_total.inc();
         collector.users_registered_total.inc();
         
@@ -280,9 +297,11 @@ mod tests {
         let collector = MetricsCollector::new();
         
         // Increment some metrics
-        collector.http_requests_total.inc();
+        collector.http_requests_total
+            .with_label_values(&["GET", "/", "200"])
+            .inc();
         collector.games_created_total.inc();
-        
+
         let exported = collector.export().unwrap();
         assert!(exported.contains("http_requests_total"));
         assert!(exported.contains("games_created_total"));
