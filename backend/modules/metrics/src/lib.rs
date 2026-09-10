@@ -1,8 +1,6 @@
-use prometheus::{Counter, Histogram, Gauge, Registry, TextEncoder, Encoder};
+use prometheus::{Counter, Histogram, Gauge, Registry, TextEncoder};
 use actix_web::{HttpResponse, web};
 use std::sync::Arc;
-use chrono::{DateTime, Utc};
-use uuid::Uuid;
 
 /// Custom metrics collector for XLMate
 pub struct MetricsCollector {
@@ -160,16 +158,12 @@ pub trait MiddlewareMetrics {
 }
 
 impl MiddlewareMetrics for MetricsCollector {
-    fn inc_http_requests(&self, method: &str, path: &str, status: u16) {
-        self.http_requests_total
-            .with_label_values(&[method, path, &status.to_string()])
-            .inc();
+    fn inc_http_requests(&self, _method: &str, _path: &str, _status: u16) {
+        self.http_requests_total.inc();
     }
-    
-    fn observe_http_duration(&self, method: &str, path: &str, duration: f64) {
-        self.http_request_duration
-            .with_label_values(&[method, path])
-            .observe(duration);
+
+    fn observe_http_duration(&self, _method: &str, _path: &str, duration: f64) {
+        self.http_request_duration.observe(duration);
     }
 }
 
@@ -186,10 +180,8 @@ impl GameMetrics for MetricsCollector {
         self.games_created_total.inc();
     }
     
-    fn inc_games_completed(&self, result: &str) {
-        self.games_completed_total
-            .with_label_values(&[result])
-            .inc();
+    fn inc_games_completed(&self, _result: &str) {
+        self.games_completed_total.inc();
     }
     
     fn inc_moves_made(&self) {

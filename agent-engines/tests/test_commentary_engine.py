@@ -6,7 +6,7 @@ from gpu_worker.models import Player
 from gpu_worker.personality import CommentaryEngine, CommentaryTone, GameMoveEvent
 
 
-def make_event(fen_before: str, move: chess.Move, move_number: int, player_id: str = "test_player", clock_remaining: float { None } = 60) -> GameMoveEvent:
+def make_event(fen_before: str, move: chess.Move, move_number: int, player_id: str = "test_player", clock_remaining: float = 60) -> GameMoveEvent:
     return GameMoveEvent(
         move_number=move_number,
         player=Player(id=player_id, rated=True),

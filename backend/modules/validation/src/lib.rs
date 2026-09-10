@@ -226,7 +226,7 @@ impl RealTimeMoveValidator {
         }
     }
 
-    async fn process_move_notation(&self, notation: &str) -> Result<ProcessedMove, ValidationError> {
+    pub async fn process_move_notation(&self, notation: &str) -> Result<ProcessedMove, ValidationError> {
         // Parse the move notation (SAN or UCI)
         let processed = if notation.len() == 4 && notation.chars().nth(2) == Some(' ') {
             // UCI format (e.g., "e2e4")

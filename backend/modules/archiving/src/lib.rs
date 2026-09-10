@@ -400,7 +400,7 @@ impl PGNArchiver {
         Ok((arweave_url, Some(tx_id.to_string()), Some(estimated_gas), Some(estimated_cost)))
     }
 
-    fn pgn_to_string(&self, pgn: &PGNGame) -> Result<String, ArchiveError> {
+    pub fn pgn_to_string(&self, pgn: &PGNGame) -> Result<String, ArchiveError> {
         let mut pgn_string = String::new();
         
         // Add PGN headers
@@ -478,13 +478,13 @@ impl PGNArchiver {
         Ok(pgn_string)
     }
 
-    fn calculate_hash(&self, data: &[u8]) -> String {
+    pub fn calculate_hash(&self, data: &[u8]) -> String {
         let mut hasher = Sha256::new();
         hasher.update(data);
         hex::encode(hasher.finalize())
     }
 
-    fn estimate_ipfs_cost(&self, size_bytes: u64) -> f64 {
+    pub fn estimate_ipfs_cost(&self, size_bytes: u64) -> f64 {
         // IPFS is typically free for pinning services, but we estimate storage costs
         // This is a simplified calculation
         let storage_cost_per_gb_per_year = 0.10; // $0.10 per GB per year
@@ -492,7 +492,7 @@ impl PGNArchiver {
         storage_cost_per_gb_per_year * size_gb
     }
 
-    fn estimate_arwear_cost(&self, size_bytes: u64) -> f64 {
+    pub fn estimate_arwear_cost(&self, size_bytes: u64) -> f64 {
         // Arweave one-time payment based on current AR price and storage costs
         // This is a simplified estimation
         let ar_price_usd = 10.0; // Assumed AR price
