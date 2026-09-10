@@ -400,7 +400,7 @@ impl PGNArchiver {
         Ok((arweave_url, Some(tx_id.to_string()), Some(estimated_gas), Some(estimated_cost)))
     }
 
-    fn pgn_to_string(&self, pgn: &PGNGame) -> Result<String, ArchiveError> {
+    pub fn pgn_to_string(&self, pgn: &PGNGame) -> Result<String, ArchiveError> {
         let mut pgn_string = String::new();
         
         // Add PGN headers
@@ -478,13 +478,13 @@ impl PGNArchiver {
         Ok(pgn_string)
     }
 
-    fn calculate_hash(&self, data: &[u8]) -> String {
+    pub fn calculate_hash(&self, data: &[u8]) -> String {
         let mut hasher = Sha256::new();
         hasher.update(data);
         hex::encode(hasher.finalize())
     }
 
-    fn estimate_ipfs_cost(&self, size_bytes: u64) -> f64 {
+    pub fn estimate_ipfs_cost(&self, size_bytes: u64) -> f64 {
         // IPFS is typically free for pinning services, but we estimate storage costs
         // This is a simplified calculation
         let storage_cost_per_gb_per_year = 0.10; // $0.10 per GB per year
@@ -492,7 +492,7 @@ impl PGNArchiver {
         storage_cost_per_gb_per_year * size_gb
     }
 
-    fn estimate_arwear_cost(&self, size_bytes: u64) -> f64 {
+    pub fn estimate_arwear_cost(&self, size_bytes: u64) -> f64 {
         // Arweave one-time payment based on current AR price and storage costs
         // This is a simplified estimation
         let ar_price_usd = 10.0; // Assumed AR price
@@ -544,6 +544,17 @@ impl PGNArchiver {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use sea_orm::{DbBackend, MockDatabase};
+
+    /// These tests only exercise helpers that don't touch the database, so a
+    /// mock connection is enough to build an archiver.
+    fn test_archiver() -> PGNArchiver {
+        PGNArchiver::new(
+            MockDatabase::new(DbBackend::Postgres).into_connection(),
+            "https://ipfs.infura.io:5001".to_string(),
+            "https://arweave.net".to_string(),
+        )
+    }
 
     fn create_sample_pgn() -> PGNGame {
         PGNGame {
@@ -597,12 +608,8 @@ mod tests {
 
     #[test]
     fn test_pgn_to_string() {
-        let archiver = PGNArchiver::new(
-            sea_orm::Database::connect("sqlite::memory:").await.unwrap(),
-            "https://ipfs.infura.io:5001".to_string(),
-            "https://arweave.net".to_string(),
-        );
-        
+        let archiver = test_archiver();
+
         let pgn = create_sample_pgn();
         let pgn_string = archiver.pgn_to_string(&pgn).unwrap();
         
@@ -615,12 +622,8 @@ mod tests {
 
     #[test]
     fn test_hash_calculation() {
-        let archiver = PGNArchiver::new(
-            sea_orm::Database::connect("sqlite::memory:").await.unwrap(),
-            "https://ipfs.infura.io:5001".to_string(),
-            "https://arweave.net".to_string(),
-        );
-        
+        let archiver = test_archiver();
+
         let data = b"test data";
         let hash = archiver.calculate_hash(data);
         
@@ -629,12 +632,8 @@ mod tests {
 
     #[test]
     fn test_cost_estimation() {
-        let archiver = PGNArchiver::new(
-            sea_orm::Database::connect("sqlite::memory:").await.unwrap(),
-            "https://ipfs.infura.io:5001".to_string(),
-            "https://arweave.net".to_string(),
-        );
-        
+        let archiver = test_archiver();
+
         let size = 1024; // 1KB
         let ipfs_cost = archiver.estimate_ipfs_cost(size);
         let arweave_cost = archiver.estimate_arwear_cost(size);
